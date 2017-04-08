@@ -32,11 +32,10 @@ def get_bcal(year, month):
         12: 'December'
     }
     month_name = month_list[int(month)]
-    print(month_name)
     thirties = ('4', '6', '9', '11')
     """ I compared CPU time between dict.fromkeys and a traditional dictionary written out and 
     the time was identical so I chose the cleaner dict.fromkeys """
-    date_range = dict.fromkeys(range(1, 31), '')
+    date_range = dict.fromkeys(range(1, 32), '')
 
     """ Iterate through the Event month queryset and update dictionary with individual Event objects.
      day_link will be linked to a ListView that filters on the requested day. """
@@ -66,7 +65,6 @@ def get_bcal(year, month):
             td1 += x
 
         td1 = '<td>&nbsp;</td>' + td1
-
         td2var1, td2var2 = 6, 13
         td3var1, td3var2 = 13, 20
         td4var1, td4var2 = 20, 27
