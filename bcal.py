@@ -1,7 +1,13 @@
-import calendar
 import datetime
 import itertools
 from .models import Event
+
+
+def is_leap_year(year):
+    if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
+        return True
+    else:
+        return False
 
 
 def get_bcal(year, month):
@@ -10,8 +16,23 @@ def get_bcal(year, month):
     dictionary. Then builds a simple HTML table-based month-view calendar """
     month_events = Event.objects.filter(date__year=year).filter(date__month=month)
     weekday_key = datetime.date(int(year), int(month), 1).weekday()
-    is_leap = calendar.isleap(int(year))
-    month_name = calendar.month_name[int(month)]
+    is_leap = is_leap_year(int(year))
+    month_list = {
+        1: 'January',
+        2: 'February',
+        3: 'March',
+        4: 'April',
+        5: 'May',
+        6: 'June',
+        7: 'July',
+        8: 'August',
+        9: 'September',
+        10: 'October',
+        11: 'November',
+        12: 'December'
+    }
+    month_name = month_list[int(month)]
+    print(month_name)
     thirties = ('4', '6', '9', '11')
     """ I compared CPU time between dict.fromkeys and a traditional dictionary written out and 
     the time was identical so I chose the cleaner dict.fromkeys """
