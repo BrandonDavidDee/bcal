@@ -15,6 +15,7 @@ def get_bcal(year, month):
     iterates through the queryset, assigning objects with a datetime.day value to the date_range 
     dictionary. Then builds a simple HTML table-based month-view calendar """
     month_events = Event.objects.filter(date__year=year).filter(date__month=month)
+    event_count = month_events.count()
     weekday_key = datetime.date(int(year), int(month), 1).weekday()
     is_leap = is_leap_year(int(year))
     month_list = {
@@ -296,9 +297,11 @@ def get_bcal(year, month):
     tr4 = '<tr>%s</tr>\n' % td4
     tr5 = '<tr>%s</tr>\n' % td5
     tr6 = '<tr>%s</tr>\n' % td6
+    all_days = '%s%s%s%s%s%s' % (tr1, tr2, tr3, tr4, tr5, tr6)
+    count = '%i events' % event_count
     table_close = '</table>'
 
-    table = '%s%s%s%s%s%s%s%s%s%s%s' % (header, links, table_open, head, tr1, tr2, tr3, tr4, tr5, tr6, table_close)
+    table = '%s%s%s%s%s%s%s' % (header, links, table_open, head, all_days, table_close, count)
 
     return table
 
