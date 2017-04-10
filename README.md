@@ -23,13 +23,24 @@ Python 3 (I haven't tested in Python 2)
 **In views.py**
 
     from django.shortcuts import render_to_response
+    from django.contrib import messages
     from .bcal import get_bcal
     ...
+
     def bcal(request, year, month):
-    return render_to_response(
-        'events/calendar.html',
-        {'user': request.user, 'calendar': get_bcal(year, month)}
-    )
+    today = date.today()
+    if int(month) > 12:
+        y = str(today.year)
+        m = str(today.month)
+        messages.add_message(request, messages.WARNING, 'Month error')
+    else:
+        y = year
+        m = month
+
+    return render(request, 'events/calendar.html', {
+        'calendar': get_bcal(y, m),
+    }, content_type='html')
+
 
 
 **In urls.py**
@@ -42,6 +53,15 @@ Python 3 (I haven't tested in Python 2)
 **In calendar.html**
 
     ...
+    {% if messages %}
+    <div class="messages">
+    {% for msg in messages %}
+        <div class="alert alert-{{msg.level_tag}}" role="alert">{{msg.message}}</div>
+    </li>
+    {% endfor %}
+    </div>
+    {% endif %}
+
     {{ calendar|safe }}
     ...
 
