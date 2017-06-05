@@ -7,6 +7,8 @@ BCal is a Month-View calendar that displays Django objects with a datefield.
 
 I needed a simple month-view calendar for a Django project. As a beginner I honestly felt a bit overwhelmed viewing the source for calendar.HTMLCalendar and trying to figure out how to work my model's objects into it. Also, I wanted the challenge of building something 100% python since at this point I've learned Django & Python simultaneously and feel I know more Django than I do Python (if that makes sense). So maybe this is redundant or unneccessary but since I wrote it I understand it and it's giving me opportunities to practice optimization as well.
 
+- see also: https://uggedal.com/journal/creating-a-flexible-monthly-calendar-in-django/
+
 **Requirements:**
 Python 3 (I haven't tested in Python 2)
 
