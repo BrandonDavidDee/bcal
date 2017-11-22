@@ -63,7 +63,7 @@ Bootstrap4
     
 **In calendar.html**
 
-(note: the above context is not being used in this template example, nor is it represented in the screenshot)
+(note: the above context item 'today' is not being used in this template example, nor is it represented in the screenshot.)
 
     ...
     {% if messages %}
