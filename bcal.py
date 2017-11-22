@@ -1,23 +1,17 @@
+from calendar import isleap
 import datetime
 import itertools
 from .models import Event
 
 
-def is_leap_year(year):
-    if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
-        return True
-    else:
-        return False
-
-
-def get_bcal(year, month):
-    """ This function takes the requested year/month combo, gets a queryset for that month then
-    iterates through the queryset, assigning objects with a datetime.day value to the date_range 
-    dictionary. Then builds a simple HTML table-based month-view calendar """
+def get_bcal3(year, month, day):
+    request_day = day
+    today = datetime.datetime.today()
+    current_month = str(today.month)
+    current_year = str(today.year)
     month_events = Event.objects.filter(date__year=year).filter(date__month=month)
-    event_count = month_events.count()
     weekday_key = datetime.date(int(year), int(month), 1).weekday()
-    is_leap = is_leap_year(int(year))
+    is_leap = isleap(int(year))
     month_list = {
         1: 'January',
         2: 'February',
@@ -34,275 +28,497 @@ def get_bcal(year, month):
     }
     month_name = month_list[int(month)]
     thirties = ('4', '6', '9', '11')
-    """ I compared CPU time between dict.fromkeys and a traditional dictionary written out and 
-    the time was identical so I chose the cleaner dict.fromkeys """
     date_range = dict.fromkeys(range(1, 32), '')
-
     """ Iterate through the Event month queryset and update dictionary with individual Event objects.
      day_link will be linked to a ListView that filters on the requested day. """
     for event in month_events:
         event_url = event.get_absolute_url()
         client = ' '.join([event.client.first_name, event.client.last_name])
-        client = '<a href="%s">%s</a><br />' % (event_url, client)
+        client = '<small><a href="%s">%s</a></small><br />' % (event_url, client)
         day = event.date.day
-
         for key, value in date_range.items():
             if key == day:
                 date_range[day] += client
+    row_today = "<div id=\"cal-today\" class=\"col cal-day\"><a href=\"/events/calendar/%s/%s/%s\">%s</a><br />%s</div>"
+    row_request_day = "<div id=\"cal-req-day\" class=\"col cal-day\">%s<br />%s</div>"
+    row_day = "<div class=\"col cal-day\"><a href=\"/events/calendar/%s/%s/%s\">%s</a><br />%s</div>"
+    empty_day = "<div class =\"col cal-day\">&nbsp;</div>"
+    sixth_row = False
 
-    """ Here we build the week based on the integer that represents the 1st day of the month.
-     We build table rows 2-5 by iterating through slices of the date_range dictionary 
-     with itertools.islice found beneath this if/else statement. Table row 1 (td1) gets special
-     treatment because we are manually adding <td>&nbps;</td> to push the 1st of the month
-     into it's correct day of week column. Finally Table row 6 (td6) gets an empty string
-     when a sixth row isn't needed. Finally, the nested if/else statement that handles tr5 
-     (and sometimes tr6) checks the requested month and if it's a leap year to determine the 
-     final day of the month.
-      """
     if weekday_key is 0:  # 1st falls on Monday -> example August 2016
-        td1 = ""
+        row1 = ""
+        before = empty_day
         for key, value in itertools.islice(date_range.items(), 0, 6):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-
-        td1 = '<td>&nbsp;</td>' + td1
-        td2var1, td2var2 = 6, 13
-        td3var1, td3var2 = 13, 20
-        td4var1, td4var2 = 20, 27
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row1 = "%s%s" % (before, row1)
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 6, 13):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 13, 20):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 20, 27):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 27, 28
-
+            start, end = 27, 28
+            remainder = empty_day * 6
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 27, 29
-
+            start, end = 27, 29
+            remainder = empty_day * 5
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 27, 30
-
+            start, end = 27, 30
+            remainder = empty_day * 4
         else:  # 31 days
-            td5var1, td5var2 = 27, 31
-
-        td6 = ""
+            start, end = 27, 31
+            remainder = empty_day * 3
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
 
     elif weekday_key is 1:  # 1st falls on Tuesday -> example November 2016
-        td1 = ""
+        row1 = ""
+        before = empty_day * 2
         for key, value in itertools.islice(date_range.items(), 0, 5):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-        td1 = '<td>&nbsp;</td><td>&nbsp;</td>' + td1
-        td2var1, td2var2 = 5, 12
-        td3var1, td3var2 = 12, 19
-        td4var1, td4var2 = 19, 26
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row1 = "%s%s" % (before, row1)
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 5, 12):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 12, 19):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 19, 26):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 26, 28
-
+            start, end = 26, 28
+            remainder = empty_day * 5
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 26, 29
-
+            start, end = 26, 29
+            remainder = empty_day * 4
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 26, 30
-
+            start, end = 26, 30
+            remainder = empty_day * 3
         else:  # 31 days
-            td5var1, td5var2 = 26, 31
-
-        td6 = ""
+            start, end = 26, 31
+            remainder = empty_day * 2
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
 
     elif weekday_key is 2:  # 1st falls on Wednesday -> example February 2017
-        td1 = ""
+
+        row1 = ""
+        before = empty_day * 3
         for key, value in itertools.islice(date_range.items(), 0, 4):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-
-        td1 = '<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>' + td1
-        td2var1, td2var2 = 4, 11
-        td3var1, td3var2 = 11, 18
-        td4var1, td4var2 = 18, 25
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row1 = "%s%s" % (before, row1)
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 4, 11):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 11, 18):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 18, 25):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 25, 28
-
+            start, end = 25, 28
+            remainder = empty_day * 4
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 25, 29
-
+            start, end = 25, 29
+            remainder = empty_day * 3
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 25, 30
-
+            start, end = 25, 30
+            remainder = empty_day * 2
         else:  # 31 days
-            td5var1, td5var2 = 25, 31
-
-        td6 = ""
+            start, end = 25, 31
+            remainder = empty_day * 1
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
 
     elif weekday_key is 3:  # 1st falls on Thursday -> example Dec 2016
-        td1 = ""
+        row1 = ""
+        before = empty_day * 4
         for key, value in itertools.islice(date_range.items(), 0, 3):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-
-        td1 = '<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>' + td1
-        td2var1, td2var2 = 3, 10
-        td3var1, td3var2 = 10, 17
-        td4var1, td4var2 = 17, 24
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row1 = "%s%s" % (before, row1)
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 3, 10):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 10, 17):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 17, 24):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 24, 28
-
+            start, end = 24, 28
+            remainder = empty_day * 3
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 24, 29
-
+            start, end = 24, 29
+            remainder = empty_day * 2
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 24, 30
-
+            start, end = 24, 30
+            remainder = empty_day * 1
         else:  # 31 days
-            td5var1, td5var2 = 24, 31
-
-        td6 = ""
+            start, end = 24, 31
+            remainder = ""
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
 
     elif weekday_key is 4:  # 1st falls on Friday -> example July 2016
-        td1 = ""
+        row1 = ""
+        before = empty_day * 5
         for key, value in itertools.islice(date_range.items(), 0, 2):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-
-        td1 = '<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>' + td1
-        td2var1, td2var2 = 2, 9
-        td3var1, td3var2 = 9, 16
-        td4var1, td4var2 = 16, 23
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row1 = "%s%s" % (before, row1)
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 2, 9):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 9, 16):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 16, 23):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 24, 28
-            td6 = ""
-
+            start, end = 23, 28
+            remainder = empty_day * 2
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 24, 29
-            td6 = ""
-
+            start, end = 23, 29
+            remainder = empty_day * 1
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 23, 30
-            td6 = ""
-
+            start, end = 23, 30
+            remainder = ""
         else:  # 31 days
-            td5var1, td5var2 = 23, 30
-            td6 = ""
+            start, end = 23, 30
+            remainder = ""
+            sixth_row = True
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
+        if sixth_row:
+            row6 = ""
+            remainder = empty_day * 6
             for key, value in itertools.islice(date_range.items(), 30, 31):
-                x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-                td6 += x
+                if year == current_year and month == current_month and key == today.day:
+                    row6 += row_today % (year, month, key, key, str(value))
+                elif str(key) == request_day:
+                    row6 += row_request_day % (
+                        str(key), str(value))
+                else:
+                    row6 += row_day % (year, month, key, key, str(value))
+            row6 = "%s%s" % (row6, remainder)
 
     elif weekday_key is 5:  # 1st falls on Saturday -> e.g. April 2017
-        td1 = ""
+        row1 = ""
+        before = empty_day * 6
         for key, value in itertools.islice(date_range.items(), 0, 1):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-        td1 = '<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>' + td1
-        td2var1, td2var2 = 1, 8
-        td3var1, td3var2 = 8, 15
-        td4var1, td4var2 = 15, 22
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row1 = "%s%s" % (before, row1)
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 1, 8):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 8, 15):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 15, 22):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 22, 28
-            td6 = ""
-
+            start, end = 22, 28
+            remainder = empty_day * 1
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 22, 29
-            td6 = ""
-
+            start, end = 22, 29
+            remainder = ""
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 22, 29
-            td6 = ""
-            for key, value in itertools.islice(date_range.items(), 29, 30):
-                x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-                td6 += x
-
+            start, end = 22, 29
+            remainder = ""
+            sixth_row = True
+            row6start, row6end = 29, 30
+            row6remainder = empty_day * 6
         else:  # 31 days
-            td5var1, td5var2 = 22, 29
-            td6 = ""
-            for key, value in itertools.islice(date_range.items(), 29, 31):
-                x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-                td6 += x
+            start, end = 22, 29
+            remainder = ""
+            sixth_row = True
+            row6start, row6end = 29, 31
+            row6remainder = empty_day * 5
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
+        if sixth_row:
+            row6 = ""
+            for key, value in itertools.islice(date_range.items(), row6start,
+                                               row6end):
+                if year == current_year and month == current_month and key == today.day:
+                    row6 += row_today % (year, month, key, key, str(value))
+                elif str(key) == request_day:
+                    row6 += row_request_day % (
+                        str(key), str(value))
+                else:
+                    row6 += row_day % (year, month, key, key, str(value))
+            row6 = "%s%s" % (row6, row6remainder)
 
-    elif weekday_key is 6:  # 1st Falls on Sunday
-        td1 = ""
+    elif weekday_key is 6:  # 1st Falls on Sunday --> October 2017
+        row1 = ""
         for key, value in itertools.islice(date_range.items(), 0, 7):
-            x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-            td1 += x
-
-        td2var1, td2var2 = 7, 14
-        td3var1, td3var2 = 14, 21
-        td4var1, td4var2 = 21, 28
-
+            if year == current_year and month == current_month and key == today.day:
+                row1 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row1 += row_request_day % (str(key), str(value))
+            else:
+                row1 += row_day % (year, month, key, key, str(value))
+        row2 = ""
+        for key, value in itertools.islice(date_range.items(), 7, 14):
+            if year == current_year and month == current_month and key == today.day:
+                row2 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row2 += row_request_day % (str(key), str(value))
+            else:
+                row2 += row_day % (year, month, key, key, str(value))
+        row3 = ""
+        for key, value in itertools.islice(date_range.items(), 14, 21):
+            if year == current_year and month == current_month and key == today.day:
+                row3 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row3 += row_request_day % (str(key), str(value))
+            else:
+                row3 += row_day % (year, month, key, key, str(value))
+        row4 = ""
+        for key, value in itertools.islice(date_range.items(), 21, 28):
+            if year == current_year and month == current_month and key == today.day:
+                row4 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row4 += row_request_day % (str(key), str(value))
+            else:
+                row4 += row_day % (year, month, key, key, str(value))
+        row5 = ""
         if month is '2' and is_leap is False:  # 28 days
-            td5var1, td5var2 = 0, 0
-
+            start, end = 28, 28
+            remainder = ""
         elif month is '2' and is_leap is True:  # 29 days
-            td5var1, td5var2 = 28, 29
-
+            start, end = 28, 29
+            remainder = empty_day * 6
         elif month in thirties:  # 30 days
-            td5var1, td5var2 = 28, 30
-
+            start, end = 28, 30
+            remainder = empty_day * 5
         else:  # 31 days
-            td5var1, td5var2 = 28, 31
-
-        td6 = ""
-
-    """ the iterators who's values are determined in the above if/else statement """
-    td2 = ""
-    for key, value in itertools.islice(date_range.items(), td2var1, td2var2):
-        x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-        td2 += x
-
-    td3 = ""
-    for key, value in itertools.islice(date_range.items(), td3var1, td3var2):
-        x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-        td3 += x
-
-    td4 = ""
-    for key, value in itertools.islice(date_range.items(), td4var1, td4var2):
-        x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-        td4 += x
-
-    td5 = ""
-    for key, value in itertools.islice(date_range.items(), td5var1, td5var2):
-        x = ''.join(['<td>', str(key), '<br />', str(value), '</td>'])
-        td5 += x
-
-    """ Create Next Month and Previous Month Links """
+            start, end = 28, 31
+            remainder = empty_day * 4
+        for key, value in itertools.islice(date_range.items(), start, end):
+            if year == current_year and month == current_month and key == today.day:
+                row5 += row_today % (year, month, key, key, str(value))
+            elif str(key) == request_day:
+                row5 += row_request_day % (str(key), str(value))
+            else:
+                row5 += row_day % (year, month, key, key, str(value))
+        row5 = "%s%s" % (row5, remainder)
+    # Create Next Month and Previous Month Links
+    nav = '<a class="btn btn-default" href="/events/calendar/%s/%s/1">%s</a>'
+    right_chevron = '<i class="fa fa-chevron-right" aria-hidden="true"></i>'
+    left_chevron = '<i class="fa fa-chevron-left" aria-hidden="true"></i>'
     if month == '12':
         next_year = int(year) + 1
         next_month = 1
-        ch1 = '<i class="fa fa-chevron-right" aria-hidden="true"></i>'
-        next_month_link = '<a class="btn btn-default" href="/events/bcal/%s/%s/">%s</a>' % (next_year, next_month, ch1)
+        ch1 = right_chevron
+        next_month_link = nav % (next_year, next_month, ch1)
     else:
         next_month = int(month) + 1
-        ch1 = '<i class="fa fa-chevron-right" aria-hidden="true"></i>'
-        next_month_link = '<a class="btn btn-default" href="/events/bcal/%s/%s/">%s</a>' % (year, next_month, ch1)
+        ch1 = right_chevron
+        next_month_link = nav % (year, next_month, ch1)
 
     if month == '1':
         prev_year = int(year) - 1
         prev_month = 12
-        ch2 = '<i class="fa fa-chevron-left" aria-hidden="true"></i>'
-        prev_month_link = '<a class="btn btn-default" href="/events/bcal/%s/%s/">%s</a>' % (prev_year, prev_month, ch2)
+        ch2 = left_chevron
+        prev_month_link = nav % (prev_year, prev_month, ch2)
     else:
         prev_month = int(month) - 1
-        ch2 = '<i class="fa fa-chevron-left" aria-hidden="true"></i>'
-        prev_month_link = '<a class="btn btn-default" href="/events/bcal/%s/%s/">%s</a>' % (year, prev_month, ch2)
+        ch2 = left_chevron
+        prev_month_link = nav % (year, prev_month, ch2)
 
-    """ Join strings to build the complete table """
-    header = ' '.join(['<h3>', month_name, year, '</h3>\n'])
-    links = ''.join([prev_month_link, next_month_link, '<br /><br />'])
-    table_open = '<table class="table table-bordered table-calendar">\n'
-    head = '<tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thur</th><th>Fri</th><th>Sat</th></tr>\n'
-    tr1 = '<tr>%s</tr>\n' % td1
-    tr2 = '<tr>%s</tr>\n' % td2
-    tr3 = '<tr>%s</tr>\n' % td3
-    tr4 = '<tr>%s</tr>\n' % td4
-    tr5 = '<tr>%s</tr>\n' % td5
-    tr6 = '<tr>%s</tr>\n' % td6
-    all_days = '%s%s%s%s%s%s' % (tr1, tr2, tr3, tr4, tr5, tr6)
-    count = '%i events' % event_count
-    table_close = '</table>'
-
-    table = '%s%s%s%s%s%s%s' % (header, links, table_open, head, all_days, table_close, count)
-
-    return table
-
-
+    links = "<h3>%s %s %s %s%s</h3>" % (
+        month_name, request_day, year, prev_month_link, next_month_link
+    )
+    sun = "<div class=\"col cal-header\">Sunday</div>\n"
+    mon = "<div class=\"col cal-header\">Monday</div>\n"
+    tue = "<div class=\"col cal-header\">Tuesday</div>\n"
+    wed = "<div class=\"col cal-header\">Wednesday</div>\n"
+    thu = "<div class=\"col cal-header\">Thursday</div>\n"
+    fri = "<div class=\"col cal-header\">Friday</div>\n"
+    sat = "<div class=\"col cal-header\">Saturday</div>\n"
+    header = "<div class=\"row\">%s%s%s%s%s%s%s</div>\n" % (
+        sun, mon, tue, wed, thu, fri, sat
+    )
+    one = "<div class=\"row\">%s</div>\n" % row1
+    two = "<div class=\"row\">%s</div>\n" % row2
+    three = "<div class=\"row\">%s</div>\n" % row3
+    four = "<div class=\"row\">%s</div>\n" % row4
+    five = "<div class=\"row\">%s</div>\n" % row5
+    if sixth_row:
+        six = "<div class=\"row\">%s</div>\n" % row6
+        return "%s%s%s%s%s%s%s%s" % (
+        links, header, one, two, three, four, five, six
+        )
+    else:
+        return "%s%s%s%s%s%s%s" % (links, header, one, two, three, four, five)
