@@ -4,7 +4,7 @@ import itertools
 from .models import Event
 
 
-def get_bcal3(year, month, day):
+def get_bcal(year, month, day):
     request_day = day
     today = datetime.datetime.today()
     current_month = str(today.month)
