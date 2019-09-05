@@ -1,7 +1,9 @@
 # bcal
 BCal is a Month-View calendar that displays Django objects with a datefield.
 
-![alt tag](https://github.com/BrandonDavidDee/bcal/blob/master/bcal_screenshot2.png)
+Update: This repo has been updated to include bcal within the context of an entire Django project.
+
+![alt tag](https://github.com/BrandonDavidDee/bcal/blob/master/bcal_screenshot3.png)
 
 ### What's the purpose of this? Why not just use calendar.HTMLCalendar?
 
@@ -18,21 +20,37 @@ Bootstrap4
 
 **In models.py**
 
+    class Client(models.Model):
+        first_name = models.CharField(max_length=80)
+        last_name = models.CharField(max_length=80)
+
+        def __str__(self):
+            return "%s %s" % (self.first_name, self.last_name)
+        
     class Event(models.Model):
-        client = models.ForeignKey(user)
+        client = models.ForeignKey(Client, on_delete=models.CASCADE)
         date = models.DateField()
+
+        class Meta:
+            verbose_name = 'event'
+            ordering = ['date', 'client']
+            get_latest_by = 'date'
+
+        def __str__(self):
+            return str(self.date)
+
+        def get_absolute_url(self):
+            return "/events/%i/" % self.id
         
 
 **In views.py**
 
-(Bonus: In this view I added a queryset and context for the requested day so it's available in the template. This can be used to show more detail related to Event objects for a requested day)
-
-    from django.shortcuts import render_to_response
+    from django.shortcuts import render
     from django.contrib import messages
     from .bcal import get_bcal
     ...
 
-    def bcal(request, year, month, day):
+    def calendar(request, year, month, day):
         today = date.today()
         today_events = Event.objects.filter(date__year=year).filter(date__month=month).filter(date__day=day)
         if int(month) > 12:
@@ -53,31 +71,36 @@ Bootstrap4
             content_type='html')
 
 
-
 **In urls.py**
     
     from .views import bcal
     ...
-    url(r'^calendar/(?P<year>\d{4})/(?P<month>\d{1,2})/(?P<day>\d{1,2})$', bcal, name='bcal'),
+    url(r'^calendar/(?P<year>\d{4})/(?P<month>\d{1,2})/(?P<day>\d{1,2})$', calendar),
+    or
+    path('events/calendar/<year>/<month>/<day>/', calendar),
     ...
     
 **In calendar.html**
 
-(note: the above context item 'today' is not being used in this template example, nor is it represented in the screenshot.)
-
     ...
-    {% if messages %}
-    <div class="messages">
-    {% for msg in messages %}
-        <div class="alert alert-{{msg.level_tag}}" role="alert">{{msg.message}}</div>
-    </li>
-    {% endfor %}
+    <div class="row">
+        <div class="col-9">
+            {{ calendar | safe }}
+        </div>
+        <div class="col-3">
+            <h3>Events</h3>
+            {% if today %}
+                <ul>
+                    {% for e in today %}
+                        <li><a href="{{ e.get_absolute_url }}">{{ e.client }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                No Events
+            {% endif %}
+        </div>
     </div>
-    {% endif %}
-
-    {{ calendar|safe }}
     ...
-
 
 **In your stylesheet**
 

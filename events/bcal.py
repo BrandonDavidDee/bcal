@@ -1,7 +1,7 @@
 from calendar import isleap
 import datetime
 import itertools
-from .models import Event
+from events.models import Event
 
 
 def get_bcal(year, month, day):
@@ -34,7 +34,7 @@ def get_bcal(year, month, day):
     for event in month_events:
         event_url = event.get_absolute_url()
         client = ' '.join([event.client.first_name, event.client.last_name])
-        client = '<small><a href="%s">%s</a></small><br />' % (event_url, client)
+        client = '&bull; <small><a href="%s">%s</a></small><br />' % (event_url, client)
         day = event.date.day
         for key, value in date_range.items():
             if key == day:
@@ -497,8 +497,8 @@ def get_bcal(year, month, day):
         ch2 = left_chevron
         prev_month_link = nav % (year, prev_month, ch2)
 
-    links = "<h3>%s %s %s %s%s</h3>" % (
-        month_name, request_day, year, prev_month_link, next_month_link
+    links = "<h3>%s%s %s %s, %s</h3>" % (
+        prev_month_link, next_month_link, month_name, request_day, year
     )
     sun = "<div class=\"col cal-header\">Sunday</div>\n"
     mon = "<div class=\"col cal-header\">Monday</div>\n"

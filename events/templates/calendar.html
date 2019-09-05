@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="row">
+        <div class="col-9">
+            {{ calendar | safe }}
+        </div>
+        <div class="col-3">
+            <h3>Events</h3>
+            {% if today %}
+                <ul>
+                    {% for e in today %}
+                        <li><a href="{{ e.get_absolute_url }}">{{ e.client }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                No Events
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
